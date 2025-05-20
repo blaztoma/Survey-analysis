@@ -1,8 +1,191 @@
-import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import seaborn as sns
+from matplotlib import patches
 from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import numpy as np
+
+
+def plot_presence_score(score: float, title: str = "Presence Score Grading", scale_type: str = "general"):
+    """
+    Plots a color-coded grading bar for a given presence score with type-specific grading thresholds.
+
+    Parameters:
+        score (float): The score to mark on the grading bar.
+        title (str): Title of the plot.
+        scale_type (str): Type of grading scale ('general', 'spatial', 'involvement').
+    """
+    if scale_type == "general":
+        thresholds = {"F": 0, "E": 3.47, "D": 3.65, "C": 3.86, "B": 4.07, "A": 4.41}
+    elif scale_type == "spatial":
+        thresholds = {"F": 0, "E": 4.01, "D": 4.25, "C": 4.50, "B": 4.76, "A": 5.25}
+    elif scale_type == "involvement":
+        thresholds = {"F": 0, "E": 3.38, "D": 3.75, "C": 4.00, "B": 4.50, "A": 4.87}
+    elif scale_type == "experienced_realism":
+        thresholds = {"F": 0, "E": 2.63, "D": 3.0, "C": 3.38, "B": 3.75, "A": 4.5}
+    else:
+        raise ValueError(f"Unsupported scale_type: {scale_type}")
+
+    if not title:
+        title_map = {
+            "general": "General Presence Score Grading",
+            "spatial": "Spatial Presence Score Grading",
+            "involvement": "Involvement Score Grading",
+            "experienced_realism": "Experienced Realism Score Grading"
+        }
+        title = title_map.get(scale_type, "Presence Score Grading")
+
+    colors = {
+        "F": "darkred",
+        "E": "red",
+        "D": "orange",
+        "C": "gold",
+        "B": "yellowgreen",
+        "A": "green"
+    }
+
+    fig, ax = plt.subplots(figsize=(10, 2.5))
+    grade_labels = list(thresholds.keys())
+
+    # Draw color bars and grade labels
+    for i in range(len(grade_labels) - 1):
+        grade = grade_labels[i + 1]
+        x_start = thresholds[grade_labels[i]]
+        x_end = thresholds[grade]
+        ax.add_patch(patches.Rectangle((x_start, 0), x_end - x_start, 1,
+                                       color=colors[grade_labels[i]], label=grade_labels[i]))
+
+        label_x = x_end - 0.15 if grade_labels[i] == "F" else (x_start + x_end) / 2
+        ax.text(label_x, -0.4, grade_labels[i], ha='center', va='bottom', fontsize=12, color='black')
+
+    # Add last band (A)
+    ax.add_patch(patches.Rectangle((thresholds["A"], 0), 6 - thresholds["A"], 1,
+                                   color=colors["A"], label="A"))
+    ax.text(thresholds["A"] + 0.15, -0.4, "A", ha='center', va='bottom', fontsize=12, color='black')
+
+    # Score line and label
+    ax.axvline(score, color='black', linewidth=2)
+    grade = "F"
+    for g in reversed(grade_labels):
+        if score >= thresholds[g]:
+            grade = g
+            break
+    label_color = colors[grade]
+    if score <= 5.5:
+        ax.text(score + 0.06, 1.15, f"{score:.2f}",
+                fontsize=12, fontweight='bold', color='black',
+                bbox=dict(facecolor='white', edgecolor=label_color, boxstyle='round,pad=0.2', linewidth=2))
+    else:
+        ax.text(score - 0.06, 1.15, f"{score:.2f}",
+                fontsize=12, fontweight='bold', color='black', ha='right',
+                bbox=dict(facecolor='white', edgecolor=label_color, boxstyle='round,pad=0.2', linewidth=2))
+
+    ax.set_xlim(0, 6)
+    ax.set_ylim(-0.5, 1.5)
+    ax.set_xticks(np.arange(0, 7, 1))
+    ax.set_yticks([])
+    ax.set_title(title)
+
+    # Labels for Acceptable/Unacceptable
+    ax.text(0.2, -0.4, "Unacceptable", fontsize=12, color="black", va="bottom")
+    ax.text(5.85, -0.4, "Acceptable", fontsize=12, color="black", va="bottom", ha='right')
+
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_all_presence_scores(scores: dict):
+    """
+    Draws all presence score grading scales in a single stacked plot for comparison.
+
+    Parameters:
+        scores (dict): Dictionary with keys 'general', 'spatial', 'involvement', 'experienced_realism',
+                       each mapped to a float score.
+    """
+    scale_configs = {
+        "general": {
+            "thresholds": {"F": 0, "E": 3.47, "D": 3.65, "C": 3.86, "B": 4.07, "A": 4.41},
+            "title": "General Precence"
+        },
+        "spatial": {
+            "thresholds": {"F": 0, "E": 4.01, "D": 4.25, "C": 4.50, "B": 4.76, "A": 5.25},
+            "title": "Spatial Presence"
+        },
+        "involvement": {
+            "thresholds": {"F": 0, "E": 3.38, "D": 3.75, "C": 4.00, "B": 4.50, "A": 4.87},
+            "title": "Involvement"
+        },
+        "experienced_realism": {
+            "thresholds": {"F": 0, "E": 2.63, "D": 3.0, "C": 3.38, "B": 3.75, "A": 4.5},
+            "title": "Experienced Realism"
+        },
+    }
+
+    colors = {
+        "F": "darkred",
+        "E": "red",
+        "D": "orange",
+        "C": "gold",
+        "B": "yellowgreen",
+        "A": "green"
+    }
+
+    fig, axes = plt.subplots(len(scale_configs), 1, figsize=(12, 2.7 * len(scale_configs)), sharex=True)
+
+    if len(scale_configs) == 1:
+        axes = [axes]
+
+    for ax, (scale_type, config) in zip(axes, scale_configs.items()):
+        score = scores.get(scale_type, None)
+        if score is None:
+            continue  # skip if score for this scale not provided
+
+        thresholds = config["thresholds"]
+        grade_labels = list(thresholds.keys())
+
+        # Draw colored grading bands
+        for i in range(len(grade_labels) - 1):
+            grade = grade_labels[i + 1]
+            x_start = thresholds[grade_labels[i]]
+            x_end = thresholds[grade]
+            ax.add_patch(patches.Rectangle((x_start, 0), x_end - x_start, 1.1,
+                                           color=colors[grade_labels[i]]))
+
+            label_x = x_end - 0.15 if grade_labels[i] == "F" else (x_start + x_end) / 2
+            ax.text(label_x, -0.3, grade_labels[i], ha='center', va='bottom', fontsize=12)
+
+        # Last segment (A)
+        ax.add_patch(patches.Rectangle((thresholds["A"], 0), 6 - thresholds["A"], 1.1,
+                                       color=colors["A"]))
+        ax.text(thresholds["A"] + 0.15, -0.3, "A", ha='center', va='bottom', fontsize=12)
+
+        # Determine grade
+        current_grade = "F"
+        for g in reversed(grade_labels):
+            if score >= thresholds[g]:
+                current_grade = g
+                break
+        label_color = colors[current_grade]
+
+        # Score line
+        ax.axvline(score, color='black', linewidth=2)
+        ax.text(score + 0.06, 1.25, f"{score:.2f}",
+                fontsize=12, fontweight='bold', color='black',
+                bbox=dict(facecolor='white', edgecolor=label_color, boxstyle='round,pad=0.2', linewidth=2))
+
+        # Decorations
+        ax.set_xlim(0, 6)
+        ax.set_ylim(-0.5, 1.6)
+        ax.set_yticks([])
+        ax.set_xticks(np.arange(0, 7, 1))
+        ax.tick_params(axis='x', labelbottom=True)
+        ax.set_title(f"{config['title']} Scale → Grade: {current_grade}", loc='left', fontsize=12, weight='bold')
+        ax.text(0.2, -0.3, "Unacceptable", fontsize=12, color="black", va="bottom")
+        ax.text(5.85, -0.3, "Acceptable", fontsize=12, color="black", va="bottom", ha='right')
+
+    plt.tight_layout()
+    plt.show()
 
 
 def plot_correlation_heatmap(df):

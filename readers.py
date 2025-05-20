@@ -26,6 +26,65 @@ def load_sus_data_from_survey(filename: str):
     return sus_df, sus_labels
 
 
+def load_sus_data_from_Egle(filename: str):
+    """
+    Load SUS data (questions 1–10) from survey CSV, clean it, and return structured data.
+
+    Returns:
+        sus_df (pd.DataFrame): Cleaned SUS responses with short labels SUS1–SUS10.
+        sus_labels (Dict[str, str]): Mapping of full SUS question texts to SUS1–SUS10.
+    """
+    # Skip the first row (repeated header row)
+    df = pd.read_csv(filename, quotechar='"', sep=',', encoding='utf-8', skiprows=[0])
+    df.columns = df.columns.str.strip()
+
+    # SUS questions are columns Q1–Q10, which are in columns 2–11
+    sus_columns = df.columns[2:12]
+    sus_df = df[sus_columns].copy()
+
+    # Clean and convert to float
+    sus_df = sus_df.applymap(lambda x: str(x).replace(',', '.') if isinstance(x, str) else x).astype(float)
+
+    # Create short labels SUS1–SUS10
+    sus_labels = {col: f"SUS{i+1}" for i, col in enumerate(sus_columns)}
+    sus_df.rename(columns=sus_labels, inplace=True)
+
+    return sus_df, sus_labels
+
+
+def load_ipq_data_from_csv(filename: str):
+    """
+    Load IPQ data from CSV, clean it, and return structured data.
+
+    Returns:
+        ipq_df (pd.DataFrame): Cleaned DataFrame for IPQ.
+        short_labels (Dict[str, str]): Mapping of original column names to short labels.
+        general_col (List[str])
+        spatial_cols (List[str])
+        involvement_cols (List[str])
+        realism_cols (List[str])
+    """
+    import pandas as pd
+
+    df = pd.read_csv(filename, quotechar='"', sep=',', encoding='utf-8')
+    df.columns = df.columns.str.strip()
+
+    ipq_columns = df.columns[2:]  # Skip index and date
+    ipq_df = df[ipq_columns].copy()
+    ipq_df = ipq_df.applymap(lambda x: str(x).replace(',', '.') if isinstance(x, str) else x).astype(float)
+
+    short_labels = {col: f"Q{i+1}" for i, col in enumerate(ipq_columns)}
+    ipq_df.rename(columns=short_labels, inplace=True)
+
+    clean_cols = list(ipq_df.columns)
+    general_col = clean_cols[0:1]
+    spatial_cols = clean_cols[1:6]
+    involvement_cols = clean_cols[6:10]
+    realism_cols = clean_cols[10:14]
+
+    return ipq_df, short_labels, general_col, spatial_cols, involvement_cols, realism_cols
+
+
 def load_wblt_data_from_wblt_sus_ai(filename: str):
     """
     Load WBLT data (first 13 survey questions) from CSV, clean it, and return structured data.

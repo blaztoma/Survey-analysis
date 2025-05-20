@@ -118,30 +118,67 @@ def calculate_sus_scores_and_grades(sus_df):
     return result
 
 
+def apply_ipq_reverse_coding(ipq_df, short_labels):
+    """
+    Reverses values for inverse-coded IPQ items (1–5 scale).
+
+    Parameters:
+        ipq_df (pd.DataFrame): Cleaned IPQ DataFrame with short column names.
+        short_labels (Dict[str, str]): Mapping from original column names to short labels.
+
+    Returns:
+        pd.DataFrame: IPQ DataFrame with reversed items corrected.
+    """
+    inverse_originals = ["SP2U", "INV3U", "REAL1U"]
+    inverse_cols = [short_labels[orig] for orig in inverse_originals if orig in short_labels]
+
+    for col in inverse_cols:
+        ipq_df[col] = 6 - ipq_df[col]
+
+    return ipq_df
+
+
+def scale_ipq_to_0_6(df):
+    """
+    Scales all numeric values in a DataFrame from the 1–5 range to the 0–6 range.
+
+    Parameters:
+        df (pd.DataFrame): DataFrame with values in range 1–5.
+
+    Returns:
+        pd.DataFrame: Scaled DataFrame with values in range 0–6.
+    """
+    return ((df - 1) / 4) * 6
+
+
 wblt_df, short_labels, learning_cols, design_cols, engagement_cols = readers.load_wblt_data_from_wblt_sus_ai("survey2.csv")
 
-analyze_cronbach(wblt_df, learning_cols, design_cols, engagement_cols)
+# analyze_cronbach(wblt_df, learning_cols, design_cols, engagement_cols)
 # plotters.plot_correlation_heatmap(wblt_df)
 # plotters.plot_boxplots(wblt_df, learning_cols, design_cols, engagement_cols)
 # plotters.plot_score_histograms(wblt_df)
 # plotters.perform_pca_and_plot(wblt_df, learning_cols, design_cols, engagement_cols)
-plotters.plot_wblt_subscales(wblt_df, learning_cols, design_cols, engagement_cols)
-print("\n--- Subscale Descriptive Statistics ---")
-print("\n--- Learning describe ---")
-print(wblt_df[learning_cols].describe())
-print("\n--- Design describe ---")
-print(wblt_df[design_cols].describe())
-print("\n--- Learning describe ---")
-print(wblt_df[engagement_cols].describe())
+# plotters.plot_wblt_subscales(wblt_df, learning_cols, design_cols, engagement_cols)
+# print("\n--- Subscale Descriptive Statistics ---")
+# print("\n--- Learning describe ---")
+# print(wblt_df[learning_cols].describe())
+# print("\n--- Design describe ---")
+# print(wblt_df[design_cols].describe())
+# print("\n--- Engagement describe ---")
+# print(wblt_df[engagement_cols].describe())
 
-sus_df, sus_labels = readers.load_sus_data_from_survey("survey2.csv")
-sus_with_scores = calculate_sus_scores_and_grades(sus_df)
-alpha = cronbach_alpha_sus(sus_df)
-print(f"Cronbach's alpha for SUS: {alpha:.3f}")
-
-# print(sus_with_scores[["SUS Score", "Grade", "Adjective", "Acceptability"]])
+# sus_df, sus_labels = readers.load_sus_data_from_survey("survey2.csv")
+# sus_df, sus_labels = readers.load_sus_data_from_Egle("SUS_skale.csv")
+#
+# sus_with_scores = calculate_sus_scores_and_grades(sus_df)
+# alpha = cronbach_alpha_sus(sus_df)
+# print(f"Cronbach's alpha for SUS: {alpha:.3f}")
+#
+# # print(sus_with_scores[["SUS Score", "Grade", "Adjective", "Acceptability"]])
 # plotters.plot_sus_results(sus_with_scores)
 # avg_sus_score = sus_with_scores["SUS Score"].mean()
+# print(avg_sus_score)
+#
 # plotters.plot_sus_percentile_curve_with_grades(avg_sus_score)
 
 # ia_df, ia_labels, interpreter_cols, ai_cols = readers.load_interpreter_ai_data_from_survey("survey.csv")
@@ -152,4 +189,42 @@ print(f"Cronbach's alpha for SUS: {alpha:.3f}")
 #
 # print("Average Q1:", ia_df["INT4"].mean() / 5)
 # plotters.plot_response_distribution(ia_df, "INT1", title="Programming tasks cover the school curriculum", xlabel="Score (0–10)", round_values=True)
+
+filename = "ipq_drivers.csv"
+real_ipq_df, short_labels, general_col, spatial_cols, involvement_cols, realism_cols = readers.load_ipq_data_from_csv(filename)
+scaled_ipq_df = scale_ipq_to_0_6(real_ipq_df)
+ipq_df = apply_ipq_reverse_coding(scaled_ipq_df, short_labels)
+
+# Print Cronbach's alpha for each subscale
+print("\n--- Cronbach's Alpha ---")
+print("General presence α:", round(cronbach_alpha(ipq_df[general_col]), 3))
+print("Spatial presence α:", round(cronbach_alpha(ipq_df[spatial_cols]), 3))
+print("Involvement α:", round(cronbach_alpha(ipq_df[involvement_cols]), 3))
+print("Realism α:", round(cronbach_alpha(ipq_df[realism_cols]), 3))
+
+all_cols = general_col + spatial_cols + involvement_cols + realism_cols
+print("Total IPQ α:", round(cronbach_alpha(ipq_df[all_cols]), 3))
+
+general_mean = ipq_df[general_col].mean().iloc[0]
+spatial_mean = ipq_df[spatial_cols].mean(axis=1).mean()
+involvement_mean = ipq_df[involvement_cols].mean(axis=1).mean()
+realism_mean = ipq_df[realism_cols].mean(axis=1).mean()
+
+# Print results
+print(f"General Presence: {general_mean:.2f}")
+print(f"Spatial Presence: {spatial_mean:.2f}")
+print(f"Involvement: {involvement_mean:.2f}")
+print(f"Experienced Realism: {realism_mean:.2f}")
+
+# plotters.plot_presence_score(general_mean, scale_type="general")
+# plotters.plot_presence_score(spatial_mean, scale_type="spatial")
+# plotters.plot_presence_score(involvement_mean, scale_type="involvement")
+# plotters.plot_presence_score(realism_mean, scale_type="experienced_realism")
+plotters.plot_all_presence_scores({
+    "general": general_mean,
+    "spatial": spatial_mean,
+    "involvement": involvement_mean,
+    "experienced_realism": realism_mean
+})
+
 
